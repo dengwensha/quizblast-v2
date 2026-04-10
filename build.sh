@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
-set -o errexit
+
+export PYTHONPATH=$(pwd)
+
 pip install -r requirements.txt
-alembic upgrade head
+
+python -m alembic upgrade head
