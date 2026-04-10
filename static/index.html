@@ -14,3 +14,15 @@
     </script>
 </body>
 </html>
+
+<script>
+let ws = new WebSocket("wss://" + location.host + "/ws");
+
+ws.onmessage = (event) => {
+    alert("New message: " + event.data);
+};
+
+function join() {
+    ws.send("Player joined");
+}
+</script>

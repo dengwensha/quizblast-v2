@@ -14,3 +14,10 @@
     </script>
 </body>
 </html>
+<script>
+let ws = new WebSocket("wss://" + location.host + "/ws");
+
+function startQuiz() {
+    ws.send("Quiz started!");
+}
+</script>
