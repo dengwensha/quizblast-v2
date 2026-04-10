@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuizBlast Oyuncu</title>
+  <title>QuizBlast Host</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,45 +12,34 @@
       padding: 0;
     }
     .container {
-      max-width: 760px;
+      max-width: 900px;
       margin: 30px auto;
       background: white;
       padding: 24px;
       border-radius: 14px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
-    input, button {
+    button {
       width: 100%;
-      padding: 14px;
-      margin-bottom: 12px;
-      box-sizing: border-box;
-      font-size: 16px;
-    }
-    .join-btn {
-      background: #1f6feb;
-      color: white;
-      border: none;
-      border-radius: 10px;
-    }
-    .question-box {
-      font-size: 24px;
-      font-weight: bold;
-      margin: 20px 0;
-    }
-    .options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .option-btn {
-      border: none;
-      border-radius: 10px;
-      background: #e9eef3;
       padding: 16px;
       font-size: 18px;
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
+      background: #1f6feb;
+      color: white;
+      margin-bottom: 12px;
     }
-    .status, .leaderboard, .timer {
+    button:hover {
+      background: #1859bb;
+    }
+    .green {
+      background: #16a34a;
+    }
+    .green:hover {
+      background: #12803a;
+    }
+    .status, .question-box, .leaderboard, .stats {
       margin-top: 20px;
       padding: 12px;
       background: #f1f5f9;
@@ -59,78 +48,76 @@
     ul {
       padding-left: 20px;
     }
+    .room {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #1f6feb;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>QuizBlast Oyuncu</h1>
+    <h1>QuizBlast Host Panel</h1>
 
-    <input id="playerName" placeholder="Adın" />
-    <input id="roomCode" placeholder="Oda Kodu" />
-    <button class="join-btn" onclick="joinGame()">Oyuna Katıl</button>
+    <div class="room">Oda Kodu: 1234</div>
 
-    <div class="timer" id="timerBox">Süre: -</div>
-    <div class="question-box" id="questionText">Soru bekleniyor...</div>
+    <button onclick="startQuiz()">Quizi Başlat</button>
+    <button onclick="nextQuestion()">Sonraki Soru</button>
+    <button class="green" onclick="showAnswer()">Doğru Cevabı Göster</button>
+    <button onclick="restartQuiz()">Quizi Baştan Başlat</button>
 
-    <div class="options">
-      <button class="option-btn" onclick="sendAnswer('A')" id="btnA">A</button>
-      <button class="option-btn" onclick="sendAnswer('B')" id="btnB">B</button>
-      <button class="option-btn" onclick="sendAnswer('C')" id="btnC">C</button>
-      <button class="option-btn" onclick="sendAnswer('D')" id="btnD">D</button>
+    <div class="question-box">
+      <h3>Aktif Soru</h3>
+      <div id="questionText">Yükleniyor...</div>
+      <ul id="optionsList"></ul>
     </div>
 
-    <div class="status" id="statusBox">Bağlanıyor...</div>
+    <div class="stats">
+      <h3>Cevap Dağılımı</h3>
+      <ul id="statsList"></ul>
+    </div>
 
     <div class="leaderboard">
       <h3>Skor Tablosu</h3>
       <ul id="leaderboardList"></ul>
     </div>
+
+    <div class="status" id="statusBox">Bağlanıyor...</div>
   </div>
 
   <script>
     let wsProtocol = location.protocol === "https:" ? "wss" : "ws";
     let ws = new WebSocket(wsProtocol + "://" + location.host + "/ws");
-    let myName = "";
-    let countdownInterval = null;
 
     ws.onopen = () => {
-      document.getElementById("statusBox").innerText = "Sunucuya bağlandı.";
+      document.getElementById("statusBox").innerText = "Host panel bağlandı.";
     };
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
 
-      if (msg.type === "join_success") {
-        document.getElementById("statusBox").innerText =
-          "Oyuna katıldın: " + msg.name + " | Oda: " + msg.room_code;
-      }
-
       if (msg.type === "question") {
-        const q = msg.data;
-        document.getElementById("questionText").innerText = q.question;
-        document.getElementById("btnA").innerText = "A) " + q.options[0];
-        document.getElementById("btnB").innerText = "B) " + q.options[1];
-        document.getElementById("btnC").innerText = "C) " + q.options[2];
-        document.getElementById("btnD").innerText = "D) " + q.options[3];
-        document.getElementById("statusBox").innerText = "Yeni soru geldi.";
-        startTimer(msg.duration);
-      }
-
-      if (msg.type === "answer_result") {
-        document.getElementById("statusBox").innerText =
-          (msg.correct ? "Doğru! " : "Yanlış! ") +
-          "Doğru cevap: " + msg.correct_answer +
-          " | Puanın: " + msg.score;
-      }
-
-      if (msg.type === "question_closed") {
-        document.getElementById("statusBox").innerText =
-          "Süre bitti. Doğru cevap: " + msg.correct_answer;
-        stopTimer();
+        showQuestion(msg.data);
       }
 
       if (msg.type === "leaderboard") {
         renderLeaderboard(msg.players);
+      }
+
+      if (msg.type === "host_answer_info") {
+        document.getElementById("statusBox").innerText =
+          msg.player + " cevap verdi: " + msg.answer +
+          (msg.correct ? " (Doğru)" : " (Yanlış)");
+      }
+
+      if (msg.type === "answer_stats") {
+        renderStats(msg.counts, msg.correct_answer);
+      }
+
+      if (msg.type === "question_closed") {
+        document.getElementById("statusBox").innerText =
+          "Soru kapandı. Doğru cevap: " + msg.correct_answer;
       }
 
       if (msg.type === "info") {
@@ -139,37 +126,19 @@
 
       if (msg.type === "quiz_finished") {
         document.getElementById("statusBox").innerText = "Quiz bitti.";
-        stopTimer();
       }
     };
 
-    function joinGame() {
-      myName = document.getElementById("playerName").value.trim();
-      const roomCode = document.getElementById("roomCode").value.trim();
+    function showQuestion(q) {
+      document.getElementById("questionText").innerText = q.question;
+      const ul = document.getElementById("optionsList");
+      ul.innerHTML = "";
 
-      if (!myName || !roomCode) {
-        alert("İsim ve oda kodu gir.");
-        return;
-      }
-
-      ws.send(JSON.stringify({
-        type: "join",
-        name: myName,
-        room_code: roomCode
-      }));
-    }
-
-    function sendAnswer(answer) {
-      if (!myName) {
-        alert("Önce oyuna katıl.");
-        return;
-      }
-
-      ws.send(JSON.stringify({
-        type: "answer",
-        name: myName,
-        answer: answer
-      }));
+      q.options.forEach((opt, i) => {
+        const li = document.createElement("li");
+        li.innerText = String.fromCharCode(65 + i) + ") " + opt;
+        ul.appendChild(li);
+      });
     }
 
     function renderLeaderboard(players) {
@@ -184,25 +153,36 @@
       });
     }
 
-    function startTimer(seconds) {
-      stopTimer();
-      let remaining = seconds;
-      document.getElementById("timerBox").innerText = "Süre: " + remaining + " sn";
+    function renderStats(counts, correctAnswer) {
+      const ul = document.getElementById("statsList");
+      ul.innerHTML = "";
 
-      countdownInterval = setInterval(() => {
-        remaining--;
-        document.getElementById("timerBox").innerText = "Süre: " + remaining + " sn";
-        if (remaining <= 0) {
-          stopTimer();
-        }
-      }, 1000);
+      ["A", "B", "C", "D"].forEach(letter => {
+        const li = document.createElement("li");
+        li.innerText = letter + ": " + counts[letter] +
+          (letter === correctAnswer ? " ✅ doğru" : "");
+        ul.appendChild(li);
+      });
     }
 
-    function stopTimer() {
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
+    function startQuiz() {
+      ws.send(JSON.stringify({ type: "start_quiz" }));
+      document.getElementById("statusBox").innerText = "Quiz başlatıldı.";
+    }
+
+    function nextQuestion() {
+      ws.send(JSON.stringify({ type: "next_question" }));
+      document.getElementById("statusBox").innerText = "Sonraki soru gönderildi.";
+    }
+
+    function showAnswer() {
+      ws.send(JSON.stringify({ type: "show_answer" }));
+      document.getElementById("statusBox").innerText = "Doğru cevap gösterildi.";
+    }
+
+    function restartQuiz() {
+      ws.send(JSON.stringify({ type: "restart_quiz" }));
+      document.getElementById("statusBox").innerText = "Quiz sıfırlandı.";
     }
   </script>
 </body>
