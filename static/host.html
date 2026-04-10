@@ -1,21 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>Host Panel</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast Host</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #1f6feb;
+      color: white;
+      margin-bottom: 12px;
+    }
+
+    button:hover {
+      background: #1859bb;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      min-height: 24px;
+    }
+
+    .question-box {
+      margin-top: 20px;
+      padding: 16px;
+      background: #eef3f8;
+      border-radius: 10px;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Host Panel</h1>
+  <div class="container">
+    <h1>QuizBlast Host Panel</h1>
 
-    <input id="question" placeholder="Soru yaz..." />
-    <button onclick="send()">Gönder</button>
+    <button onclick="nextQuestion()">Sonraki Soru</button>
+    <button onclick="restartQuiz()">Quizi Baştan Başlat</button>
 
-    <script>
-        let ws = new WebSocket("wss://" + location.host + "/ws");
+    <div class="question-box">
+      <h3>Aktif Soru</h3>
+      <div id="questionText">Yükleniyor...</div>
+      <ul id="optionsList"></ul>
+    </div>
 
-        function send() {
-            let q = document.getElementById("question").value;
-            ws.send(q);
-        }
-    </script>
+    <div class="status" id="statusBox">Bağlanıyor...</div>
+  </div>
+
+  <script>
+    let wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+    let ws = new WebSocket(wsProtocol + "://" + location.host + "/ws");
+
+    ws.onopen = () => {
+      document.getElementById("statusBox").innerText = "Host panel bağlandı.";
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "question") {
+        showQuestion(msg.data);
+      }
+
+      if (msg.type === "answer_info") {
+        document.getElementById("statusBox").innerText =
+          "Oyuncudan cevap geldi: " + msg.player_answer;
+      }
+    };
+
+    function showQuestion(q) {
+      document.getElementById("questionText").innerText = q.question;
+      const ul = document.getElementById("optionsList");
+      ul.innerHTML = "";
+
+      q.options.forEach((opt, i) => {
+        const li = document.createElement("li");
+        li.innerText = String.fromCharCode(65 + i) + ") " + opt;
+        ul.appendChild(li);
+      });
+    }
+
+    function nextQuestion() {
+      ws.send(JSON.stringify({ type: "next_question" }));
+      document.getElementById("statusBox").innerText = "Sonraki soru gönderildi.";
+    }
+
+    function restartQuiz() {
+      ws.send(JSON.stringify({ type: "restart_quiz" }));
+      document.getElementById("statusBox").innerText = "Quiz başa alındı.";
+    }
+  </script>
 </body>
 </html>
