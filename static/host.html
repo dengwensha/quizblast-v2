@@ -13,8 +13,8 @@
     }
 
     .container {
-      max-width: 800px;
-      margin: 40px auto;
+      max-width: 900px;
+      margin: 30px auto;
       background: white;
       padding: 24px;
       border-radius: 14px;
@@ -41,23 +41,23 @@
       background: #1859bb;
     }
 
-    .status {
+    .status, .question-box, .leaderboard {
       margin-top: 20px;
       padding: 12px;
       background: #f1f5f9;
-      border-radius: 10px;
-      min-height: 24px;
-    }
-
-    .question-box {
-      margin-top: 20px;
-      padding: 16px;
-      background: #eef3f8;
       border-radius: 10px;
     }
 
     ul {
       padding-left: 20px;
+    }
+
+    .correct-btn {
+      background: #16a34a;
+    }
+
+    .correct-btn:hover {
+      background: #12803a;
     }
   </style>
 </head>
@@ -66,12 +66,18 @@
     <h1>QuizBlast Host Panel</h1>
 
     <button onclick="nextQuestion()">Sonraki Soru</button>
+    <button onclick="showAnswer()" class="correct-btn">Doğru Cevabı Göster</button>
     <button onclick="restartQuiz()">Quizi Baştan Başlat</button>
 
     <div class="question-box">
       <h3>Aktif Soru</h3>
       <div id="questionText">Yükleniyor...</div>
       <ul id="optionsList"></ul>
+    </div>
+
+    <div class="leaderboard">
+      <h3>Skor Tablosu</h3>
+      <ul id="leaderboardList"></ul>
     </div>
 
     <div class="status" id="statusBox">Bağlanıyor...</div>
@@ -92,9 +98,19 @@
         showQuestion(msg.data);
       }
 
-      if (msg.type === "answer_info") {
+      if (msg.type === "leaderboard") {
+        renderLeaderboard(msg.players);
+      }
+
+      if (msg.type === "host_answer_info") {
         document.getElementById("statusBox").innerText =
-          "Oyuncudan cevap geldi: " + msg.player_answer;
+          msg.player + " cevabı verdi: " + msg.answer +
+          (msg.correct ? " (Doğru)" : " (Yanlış)");
+      }
+
+      if (msg.type === "show_answer") {
+        document.getElementById("statusBox").innerText =
+          "Doğru cevap: " + msg.correct_answer;
       }
     };
 
@@ -110,6 +126,19 @@
       });
     }
 
+    function renderLeaderboard(players) {
+      const ul = document.getElementById("leaderboardList");
+      ul.innerHTML = "";
+
+      const entries = Object.entries(players).sort((a, b) => b[1] - a[1]);
+
+      entries.forEach(([name, score]) => {
+        const li = document.createElement("li");
+        li.innerText = name + " - " + score + " puan";
+        ul.appendChild(li);
+      });
+    }
+
     function nextQuestion() {
       ws.send(JSON.stringify({ type: "next_question" }));
       document.getElementById("statusBox").innerText = "Sonraki soru gönderildi.";
@@ -118,6 +147,11 @@
     function restartQuiz() {
       ws.send(JSON.stringify({ type: "restart_quiz" }));
       document.getElementById("statusBox").innerText = "Quiz başa alındı.";
+    }
+
+    function showAnswer() {
+      ws.send(JSON.stringify({ type: "show_answer" }));
+      document.getElementById("statusBox").innerText = "Doğru cevap açıklandı.";
     }
   </script>
 </body>
