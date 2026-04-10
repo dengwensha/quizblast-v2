@@ -4,27 +4,25 @@
     <title>Quiz Player</title>
 </head>
 <body>
+    <h1>QuizBlast</h1>
 
-<h1>QuizBlast</h1>
+    <div id="messages"></div>
 
-<div id="messages"></div>
+    <button onclick="join()">Join</button>
 
-<button onclick="join()">Join</button>
+    <script>
+        let ws = new WebSocket("wss://" + location.host + "/ws");
 
-<script>
-let ws = new WebSocket("wss://" + location.host + "/ws");
+        ws.onmessage = (event) => {
+            let div = document.getElementById("messages");
+            let p = document.createElement("p");
+            p.innerText = event.data;
+            div.appendChild(p);
+        };
 
-ws.onmessage = (event) => {
-    let div = document.getElementById("messages");
-    let p = document.createElement("p");
-    p.innerText = event.data;
-    div.appendChild(p);
-};
-
-function join() {
-    ws.send("Player joined");
-}
-</script>
-
+        function join() {
+            ws.send("Player joined");
+        }
+    </script>
 </body>
 </html>
