@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Quiz Host</title>
+    <title>Host Panel</title>
 </head>
 <body>
-    <h1>Quiz Host Panel</h1>
-    <button onclick="startQuiz()">Start Quiz</button>
 
-    <script>
-        function startQuiz() {
-            alert("Quiz started!");
-        }
-    </script>
-</body>
-</html>
+<h1>Host Panel</h1>
+
+<input id="question" placeholder="Soru yaz..." />
+<button onclick="send()">Gönder</button>
+
 <script>
 let ws = new WebSocket("wss://" + location.host + "/ws");
 
-function startQuiz() {
-    ws.send("Quiz started!");
+function send() {
+    let q = document.getElementById("question").value;
+    ws.send(q);
 }
 </script>
+
+</body>
+</html>
